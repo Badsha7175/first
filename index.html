@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C Program Executor</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- CodeMirror CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <!-- CodeMirror Theme -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
+    <style>
+        .CodeMirror {
+            height: auto !important; /* Ensure it grows dynamically */
+            overflow-y: hidden;     /* Hide vertical scrolling */
+        }
+        #execute-button:disabled {
+            background-color: lightgray;
+        }
+    </style>
+    
+</head>
+<body class="bg-white-900 text-gray-900 flex flex-col items-center min-h-screen py-10 px-5">
+    <h1 class="text-3xl font-bold mb-6">C Program Executor</h1>
+    <div class="w-full max-w-4xl">
+        <!-- CodeMirror Editor -->
+        <textarea id="code-editor" class="hidden">
+// C Program Example
+#include <stdio.h>
+
+int main() {
+    int num;
+    scanf("%d", &num);
+
+    if (num % 2 == 0) {
+        printf("even\n", num);
+    }
+    else {
+        printf("odd\n", num);
+    }
+
+    return 0;
+}
+        </textarea>
+        <!-- Input Field -->
+        <div class="my-4">
+            <label for="program-input" class="block text-lg font-medium mb-2">Program Input</label>
+            <input id="program-input" autocomplete="false" type="text" placeholder="Enter input for the program"
+                class="w-full px-4 py-2 rounded bg-white border border-gray-700 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <!-- Submit Button -->
+        <button id="execute-button"
+            class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white font-medium">
+            Run Program
+        </button>
+        <!-- Output Area -->
+        <div id="output" class="mt-6 p-4 rounded bg-white border border-gray-300 text-gray-800"></div>
+    </div>
+
+    <!-- CodeMirror JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/clike/clike.min.js"></script>
+
+    <script>
+        // Initialize CodeMirror
+        const editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
+            lineNumbers: true,
+            mode: "text/x-csrc",
+            theme: "dracula",
+            tabSize: 4,
+            indentWithTabs: true,
+            viewportMargin: Infinity
+        });
+
+        // DOM Elements
+        const executeButton = document.getElementById('execute-button');
+        const outputDiv = document.getElementById('output');
+        const inputField = document.getElementById('program-input');
+
+        // Execute Program on Button Click
+        executeButton.addEventListener('click', async () => {
+            // Get code from editor and input from field
+            const code = editor.getValue();
+            const stdin = inputField.value;
+            executeButton.setAttribute('disabled', true);
+
+            // API URL
+            const apiUrl = "https://emkc.org/api/v2/piston/execute";
+
+            // Request payload
+            const payload = {
+                language: "c",
+                version: "*",
+                files: [{ name: "main.c", content: code }],
+                stdin: stdin
+            };
+
+            // Call API
+            try {
+                const response = await fetch(apiUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+
+                const result = await response.json();
+
+                // Display Output or Error
+                if (result.run) {
+                    outputDiv.textContent = `${result.run.output}`;
+                } else if (result.compile) {
+                    outputDiv.textContent = `Compile Error:\n${result.compile.output}`;
+                } else {
+                    outputDiv.textContent = `Error:\n${JSON.stringify(result, null, 2)}`;
+                }
+            }
+            catch (error) {
+                outputDiv.textContent = `Error: ${error.message}`;
+            }
+            finally {
+                executeButton.removeAttribute('disabled');
+            }
+        });
+    </script>
+</body>
+</html>
